@@ -1,0 +1,547 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1, user-scalable=no">
+<title>Pour toi</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&family=Caveat:wght@500;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --primary: #FF6B9D;
+    --primary-deep: #FF4D88;
+    --secondary: #FFD6E8;
+    --bg: #FFF8FC;
+    --text: #2D2D2D;
+    --radius: 20px;
+    --transition-speed: 800ms;
+  }
+
+  *{ box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+  html, body{
+    margin:0; padding:0; height:100%;
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Poppins', sans-serif;
+    overflow: hidden;
+  }
+
+  @media (prefers-reduced-motion: reduce){
+    *{ animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; }
+  }
+
+  #app{ position: relative; width: 100vw; height: 100dvh; overflow: hidden; }
+
+  #bg-plain{ position:fixed; inset:0; z-index:0; background: var(--bg); }
+
+  #confetti-canvas{ position: fixed; inset:0; z-index: 40; pointer-events:none; display:none; }
+
+  #music-toggle{
+    position: fixed; top: 18px; right: 18px; z-index: 60;
+    width: 46px; height: 46px; border-radius: 50%;
+    background: rgba(255,255,255,.9); border: 1px solid var(--secondary);
+    box-shadow: 0 4px 14px rgba(255,107,157,.2);
+    display:flex; align-items:center; justify-content:center;
+    cursor:pointer; font-size:20px; user-select:none;
+    transition: transform .2s ease;
+  }
+  #music-toggle:hover{ transform: scale(1.08); }
+  #music-toggle:active{ transform: scale(.92); }
+
+  .screen{
+    position:absolute; inset:0; z-index: 5;
+    display:flex; flex-direction:column; align-items:center; justify-content:center;
+    text-align:center; padding: 32px 22px;
+    opacity:0; visibility:hidden; pointer-events:none;
+    transform: translateY(14px);
+    transition: opacity var(--transition-speed) ease, transform var(--transition-speed) ease;
+  }
+  .screen.active{ opacity:1; visibility:visible; pointer-events:auto; transform: translateY(0); }
+
+  .eyebrow{ font-family:'Caveat', cursive; color: var(--primary-deep); font-size: 26px; margin-bottom: 6px; font-weight:700; }
+  h1, h2{ margin:0 0 10px; font-weight:700; }
+  h1{ font-size: clamp(26px, 6vw, 40px); }
+  h2{ font-size: clamp(22px, 5vw, 30px); }
+  p{ line-height:1.6; font-size: clamp(15px,3.6vw,17px); }
+
+  /* ---- loading ---- */
+  #screen-loading p{
+    font-family:'Caveat', cursive; font-size: clamp(28px, 6vw, 42px);
+    color: var(--primary-deep); max-width: 520px; font-weight:600;
+    animation: fadeInSlow 1.4s ease both;
+  }
+  @keyframes fadeInSlow{ from{opacity:0; transform:translateY(10px);} to{opacity:1; transform:translateY(0);} }
+  .loading-dots{ display:flex; gap:8px; margin-top:18px; }
+  .loading-dots span{ width:9px; height:9px; border-radius:50%; background: var(--primary); animation: dotPulse 1.2s ease-in-out infinite; }
+  .loading-dots span:nth-child(2){ animation-delay:.2s; }
+  .loading-dots span:nth-child(3){ animation-delay:.4s; }
+  @keyframes dotPulse{ 0%,80%,100%{ transform:scale(.6); opacity:.4; } 40%{ transform:scale(1); opacity:1; } }
+
+  /* ---- envelope (sober, no heart icon) ---- */
+  #envelope-wrap{ position:relative; width: 220px; height:150px; margin-top:10px; cursor:pointer; }
+  .envelope-body{
+    position:absolute; inset:0; background: linear-gradient(160deg,#fff,var(--secondary));
+    border-radius: 12px; box-shadow: 0 18px 40px rgba(255,107,157,.22);
+    border: 1px solid #ffe1ee;
+    animation: pulseEnv 2.2s ease-in-out infinite;
+  }
+  @keyframes pulseEnv{ 0%,100%{ transform: scale(1); } 50%{ transform: scale(1.03); } }
+  .envelope-flap{
+    position:absolute; top:0; left:0; width:100%; height:0; border-left:110px solid transparent;
+    border-right:110px solid transparent; border-top:78px solid var(--primary);
+    transform-origin: top; transition: transform .6s cubic-bezier(.6,-0.2,.2,1.4);
+    filter: drop-shadow(0 3px 3px rgba(0,0,0,.06));
+  }
+  #envelope-wrap.opened .envelope-flap{ transform: rotateX(180deg); }
+  .envelope-seal{
+    position:absolute; left:50%; top:58%; transform:translate(-50%,-50%);
+    width:22px; height:22px; border-radius:50%; background: var(--primary-deep); z-index:2;
+    box-shadow: 0 2px 6px rgba(0,0,0,.15);
+  }
+  #screen-envelope .hint{ margin-top: 22px; font-size:14px; color:#8a8a8a; }
+
+  /* ---- letter ---- */
+  .letter-card{
+    background: #fffdfb; border-radius: var(--radius);
+    box-shadow: 0 20px 50px rgba(255,107,157,.15);
+    padding: 34px 28px; max-width: 480px; width:100%;
+    border: 1px solid #ffe9f2;
+    background-image: repeating-linear-gradient(#fffdfb 0px, #fffdfb 30px, #fdeef4 31px);
+  }
+  .letter-line{ font-size: clamp(16px,4vw,18px); margin: 0 0 14px; text-align:left; min-height: 1.4em; opacity:0; }
+  .letter-line.show{ opacity:1; animation: fadeInSlow .5s ease both; }
+
+  .btn{
+    border:none; cursor:pointer; font-family:'Poppins',sans-serif; font-weight:600;
+    border-radius: 999px; padding: 13px 30px; font-size:15px;
+    background: var(--primary); color:#fff; box-shadow: 0 10px 24px rgba(255,107,157,.3);
+    transition: transform .18s ease, box-shadow .18s ease;
+  }
+  .btn:hover{ transform: scale(1.05); }
+  .btn:active{ transform: scale(.95); }
+  .btn.ghost{ background: #fff; color: var(--primary-deep); border:1.5px solid var(--primary); box-shadow:none; }
+  .btn[disabled]{ opacity:0; pointer-events:none; }
+
+  #letter-next{ margin-top: 18px; opacity:0; transition: opacity .5s ease; }
+  #letter-next.show{ opacity:1; }
+
+  /* ---- question ---- */
+  .choice-row{ display:flex; gap:16px; margin-top: 26px; position:relative; flex-wrap:wrap; justify-content:center; }
+  #btn-no{ position:relative; transition: transform .18s ease; background:#fff; color:#9a9a9a; border:1.5px solid #eadfe4; box-shadow:none; }
+  #no-msg{ font-size:13px; color:#b46; margin-top:10px; min-height:18px; font-style:italic; }
+
+  /* ---- celebration ---- */
+  #screen-celebration h1{ color: var(--primary-deep); }
+  .burst{ font-size: 48px; animation: pop .6s cubic-bezier(.5,1.8,.6,1); }
+  @keyframes pop{ 0%{ transform: scale(0); } 70%{ transform: scale(1.2); } 100%{ transform: scale(1); } }
+
+  /* ---- planning screens ---- */
+  .plan-buttons{ display:flex; gap:14px; margin-top: 24px; flex-wrap:wrap; justify-content:center; max-width: 420px; }
+  .plan-buttons.stack{ flex-direction:column; align-items:stretch; width:100%; max-width:320px; }
+  .reveal-box{ margin-top:22px; }
+  .reveal-text{ font-family:'Caveat', cursive; font-size: 26px; color: var(--primary-deep); margin: 4px 0 18px; opacity:0; animation: fadeInSlow .5s ease both; }
+
+  #custom-input{
+    width:100%; max-width:340px; padding: 12px 16px; border-radius: 999px;
+    border: 1.5px solid var(--secondary); font-family:'Poppins',sans-serif; font-size:15px;
+    outline:none; margin-top: 10px;
+  }
+  #custom-input:focus{ border-color: var(--primary); }
+
+  /* ---- date invitation (recap) ---- */
+  .invite-card{
+    background:#fff; border-radius: var(--radius); padding: 30px 26px; max-width: 420px; width:100%;
+    box-shadow: 0 20px 50px rgba(255,107,157,.18); border:1px solid #ffe9f2;
+  }
+  .invite-row{ display:flex; align-items:center; gap:12px; text-align:left; padding:10px 0; border-bottom: 1px dashed #ffe0ec; }
+  .invite-row:last-of-type{ border-bottom:none; }
+  .invite-row.hidden{ display:none; }
+  .invite-row .ic{ font-size:20px; width:26px; text-align:center; }
+  .invite-row .label{ font-size:12px; color:#a88; text-transform:uppercase; letter-spacing:.04em; }
+  .invite-row .value{ font-weight:600; font-size:15px; }
+  .invite-msg{ margin-top:16px; font-family:'Caveat',cursive; font-size:22px; color:var(--primary-deep); }
+
+  .screen-index{ position:fixed; bottom:14px; left:50%; transform:translateX(-50%); z-index:50; display:flex; gap:6px; }
+  .screen-index .pip{ width:6px; height:6px; border-radius:50%; background:#f0c9d8; }
+  .screen-index .pip.on{ background: var(--primary); }
+
+  @media (max-width: 380px){
+    .letter-card, .invite-card{ padding: 24px 18px; }
+    #envelope-wrap{ width:180px; height:126px; }
+    .envelope-flap{ border-left-width:90px; border-right-width:90px; border-top-width:64px; }
+  }
+</style>
+</head>
+<body>
+
+<div id="bg-plain"></div>
+<canvas id="confetti-canvas"></canvas>
+
+<button id="music-toggle" title="Musique">🔇</button>
+<audio id="bg-audio" loop preload="none" src="assets/music/background.mp3"></audio>
+
+<div id="app">
+
+  <!-- 1. LOADING -->
+  <section class="screen active" id="screen-loading">
+    <p>Quelqu'un aimerait te dire quelque chose...</p>
+    <div class="loading-dots"><span></span><span></span><span></span></div>
+  </section>
+
+  <!-- 2. ENVELOPE -->
+  <section class="screen" id="screen-envelope">
+    <div class="eyebrow">Pour toi</div>
+    <h2>Clique sur l'enveloppe</h2>
+    <div id="envelope-wrap">
+      <div class="envelope-body"></div>
+      <div class="envelope-seal"></div>
+      <div class="envelope-flap"></div>
+    </div>
+    <div class="hint">(un petit clic suffit)</div>
+  </section>
+
+  <!-- 3. LETTER -->
+  <section class="screen" id="screen-letter">
+    <div class="letter-card">
+      <p class="letter-line" data-line="0">Salut</p>
+      <p class="letter-line" data-line="1">Depuis quelque temps j'ai envie de te dire quelque chose...</p>
+      <p class="letter-line" data-line="2">Mais je trouvais qu'un simple message serait trop banal.</p>
+      <p class="letter-line" data-line="3">Alors j'ai créé ce petit site spécialement pour toi.</p>
+    </div>
+    <button class="btn" id="letter-next" disabled>Continuer →</button>
+  </section>
+
+  <!-- 4. QUESTION -->
+  <section class="screen" id="screen-question">
+    <h1>Alors...</h1>
+    <p style="max-width:340px;">Est-ce que tu accepterais de sortir avec moi ?</p>
+    <div class="choice-row">
+      <button class="btn" id="btn-yes">Oui</button>
+      <button class="btn" id="btn-no">Non</button>
+    </div>
+    <div id="no-msg"></div>
+  </section>
+
+  <!-- 5. CELEBRATION -->
+  <section class="screen" id="screen-celebration">
+    <div class="burst">🎉✨🎉</div>
+    <h1>Yippie !!</h1>
+    <p>Tu viens de faire quelqu'un de très heureux 😊</p>
+    <button class="btn" id="celebration-next" style="margin-top:22px;">On organise ça →</button>
+  </section>
+
+  <!-- 6. DATE CHOICE -->
+  <section class="screen" id="screen-date-choice">
+    <div class="eyebrow">Petite question</div>
+    <h2>C'est quand ?</h2>
+    <div class="plan-buttons">
+      <button class="btn" data-value="Vendredi 17 Juillet">Vendredi 17</button>
+      <button class="btn" data-value="Samedi 18 Juillet">Samedi 18</button>
+    </div>
+  </section>
+
+  <!-- 7. ACTIVITY CHOICE -->
+  <section class="screen" id="screen-activity-choice">
+    <div class="eyebrow">Et pour l'activité</div>
+    <h2>Ciné ou une idée à toi ?</h2>
+    <div class="plan-buttons">
+      <button class="btn" id="act-cinema">🎬 Cinéma</button>
+      <button class="btn ghost" id="act-custom">💡 Une proposition de ta part</button>
+    </div>
+  </section>
+
+  <!-- 8. MOVIE CHOICE -->
+  <section class="screen" id="screen-movie-choice">
+    <div class="eyebrow">Cinéma</div>
+    <h2>On regarde quoi ?</h2>
+    <div class="plan-buttons stack">
+      <button class="btn" data-value="Supergirl">Supergirl</button>
+      <button class="btn" data-value="Les Minions">Les Minions</button>
+      <button class="btn" data-value="Toy Story">Toy Story</button>
+    </div>
+  </section>
+
+  <!-- 9. TIME CHOICE -->
+  <section class="screen" id="screen-time-choice">
+    <div class="eyebrow">Séance</div>
+    <h2>À quelle heure ?</h2>
+    <div class="plan-buttons">
+      <button class="btn" data-value="18h">18h</button>
+      <button class="btn" data-value="20h">20h</button>
+      <button class="btn" data-value="22h">22h</button>
+    </div>
+  </section>
+
+  <!-- 10. CUSTOM PROPOSAL -->
+  <section class="screen" id="screen-custom-proposal">
+    <div class="eyebrow">Je t'écoute</div>
+    <h2>Dis-moi ce que tu proposes</h2>
+    <input type="text" id="custom-input" placeholder="ta proposition...">
+    <div>
+      <button class="btn" id="custom-validate" style="margin-top:18px;">Valider →</button>
+    </div>
+  </section>
+
+  <!-- 11. AFTER CHOICE -->
+  <section class="screen" id="screen-after-choice">
+    <div id="after-question">
+      <div class="eyebrow">Dernière question</div>
+      <h2>Et après, on fait quoi ?</h2>
+      <div class="plan-buttons">
+        <button class="btn" id="after-maison">🏠 On rentre à la maison</button>
+        <button class="btn ghost" id="after-surprise">❓ Sortie surprise</button>
+      </div>
+    </div>
+    <div class="reveal-box" id="after-reveal" style="display:none;">
+      <p class="reveal-text" id="reveal-text"></p>
+      <button class="btn" id="reveal-next">Voir le résumé →</button>
+    </div>
+  </section>
+
+  <!-- 12. DATE INVITATION (RECAP) -->
+  <section class="screen" id="screen-date">
+    <div class="eyebrow">C'est officiel</div>
+    <h2>Notre rendez-vous</h2>
+    <div class="invite-card">
+      <div class="invite-row"><span class="ic">📅</span><div><div class="label">Date</div><div class="value" id="recap-date">—</div></div></div>
+      <div class="invite-row"><span class="ic">🎬</span><div><div class="label">Activité</div><div class="value" id="recap-activity">—</div></div></div>
+      <div class="invite-row" id="recap-time-row"><span class="ic">🕗</span><div><div class="label">Horaire</div><div class="value" id="recap-time">—</div></div></div>
+      <div class="invite-row"><span class="ic">✨</span><div><div class="label">Après</div><div class="value" id="recap-after">—</div></div></div>
+    </div>
+    <div class="invite-msg">J'ai vraiment hâte de passer ce moment avec toi</div>
+  </section>
+
+</div>
+
+<div class="screen-index" id="screen-index"></div>
+
+<script>
+(function(){
+  const order = ["loading","envelope","letter","question","celebration",
+    "date-choice","activity-choice","movie-choice","time-choice","custom-proposal","after-choice","date"];
+
+  const groupOf = {
+    "loading":0,"envelope":1,"letter":2,"question":3,"celebration":4,
+    "date-choice":5,"activity-choice":5,"movie-choice":5,"time-choice":5,
+    "custom-proposal":5,"after-choice":5,"date":6
+  };
+  const totalGroups = 7;
+
+  const pipsWrap = document.getElementById('screen-index');
+  for(let i=0;i<totalGroups;i++){
+    const p = document.createElement('div');
+    p.className = 'pip' + (i===0 ? ' on':'');
+    pipsWrap.appendChild(p);
+  }
+  function updatePips(id){
+    const g = groupOf[id] ?? 0;
+    [...pipsWrap.children].forEach((p,i)=> p.classList.toggle('on', i===g));
+  }
+
+  const state = { date:null, activity:null, movie:null, time:null, customText:null, after:null };
+
+  function showScreen(id){
+    order.forEach(o=>{
+      document.getElementById('screen-'+o).classList.toggle('active', o===id);
+    });
+    updatePips(id);
+    if(id === 'celebration') runCelebration();
+    if(id === 'date') renderRecap();
+  }
+
+  // ---- music toggle ----
+  const audio = document.getElementById('bg-audio');
+  const musicBtn = document.getElementById('music-toggle');
+  audio.volume = 0.25;
+  let playing = false;
+  musicBtn.addEventListener('click', ()=>{
+    if(!playing){ audio.play().catch(()=>{}); playing = true; musicBtn.textContent = '🔊'; }
+    else { audio.pause(); playing = false; musicBtn.textContent = '🔇'; }
+  });
+
+  // ---- 1. loading -> envelope ----
+  setTimeout(()=> showScreen('envelope'), 2500);
+
+  // ---- 2. envelope ----
+  const envWrap = document.getElementById('envelope-wrap');
+  envWrap.addEventListener('click', ()=>{
+    if(envWrap.classList.contains('opened')) return;
+    envWrap.classList.add('opened');
+    setTimeout(()=> showScreen('letter'), 700);
+  });
+
+  // ---- 3. letter ----
+  function playLetter(){
+    const lines = document.querySelectorAll('#screen-letter .letter-line');
+    lines.forEach(l=> l.classList.remove('show'));
+    const nextBtn = document.getElementById('letter-next');
+    nextBtn.classList.remove('show'); nextBtn.disabled = true;
+    lines.forEach((line, i)=>{ setTimeout(()=> line.classList.add('show'), 500 + i*900); });
+    setTimeout(()=>{ nextBtn.disabled = false; nextBtn.classList.add('show'); }, 500 + lines.length*900 + 300);
+  }
+  document.getElementById('letter-next').addEventListener('click', ()=> showScreen('question'));
+  const letterObserver = new MutationObserver(()=>{
+    if(document.getElementById('screen-letter').classList.contains('active')) playLetter();
+  });
+  letterObserver.observe(document.getElementById('screen-letter'), {attributes:true, attributeFilter:['class']});
+
+  // ---- 4. question / dodge button (reacts as the cursor gets close) ----
+  const btnNo = document.getElementById('btn-no');
+  const btnYes = document.getElementById('btn-yes');
+  const noMsg = document.getElementById('no-msg');
+  const messages = ["Tu es sûre ?","Réfléchis encore 😢","Allez 😅","Dernière chance..."];
+  let dodgeCount = 0;
+  let noX = 0, noY = 0;
+  let lastDodge = 0;
+
+  function dodgeAwayFrom(cx, cy){
+    const now = Date.now();
+    if(now - lastDodge < 120) return;
+    lastDodge = now;
+    const rect = btnNo.getBoundingClientRect();
+    const centerX = rect.left + rect.width/2;
+    const centerY = rect.top + rect.height/2;
+    let dx = centerX - cx;
+    let dy = centerY - cy;
+    const len = Math.hypot(dx,dy) || 1;
+    dx = dx/len; dy = dy/len;
+    noX += dx * 70 + (Math.random()*16-8);
+    noY += dy * 40 + (Math.random()*16-8);
+    noX = Math.max(-140, Math.min(140, noX));
+    noY = Math.max(-50, Math.min(50, noY));
+    btnNo.style.transform = `translate(${noX}px, ${noY}px)`;
+    noMsg.textContent = messages[Math.min(dodgeCount, messages.length-1)];
+    dodgeCount++;
+    const scale = Math.min(1 + dodgeCount*0.05, 1.4);
+    btnYes.style.transform = `scale(${scale})`;
+  }
+
+  function proximityCheck(cx, cy){
+    if(!document.getElementById('screen-question').classList.contains('active')) return;
+    const rect = btnNo.getBoundingClientRect();
+    const centerX = rect.left + rect.width/2;
+    const centerY = rect.top + rect.height/2;
+    const dist = Math.hypot(centerX-cx, centerY-cy);
+    if(dist < 90) dodgeAwayFrom(cx, cy);
+  }
+  document.addEventListener('mousemove', (e)=> proximityCheck(e.clientX, e.clientY));
+  document.addEventListener('touchmove', (e)=>{
+    const t = e.touches[0];
+    if(t) proximityCheck(t.clientX, t.clientY);
+  }, {passive:true});
+  btnNo.addEventListener('click', (e)=>{ e.preventDefault(); dodgeAwayFrom(e.clientX, e.clientY); });
+  btnYes.addEventListener('click', ()=> showScreen('celebration'));
+
+  // ---- 5. celebration: confetti ----
+  const canvas = document.getElementById('confetti-canvas');
+  const ctx = canvas.getContext('2d');
+  let confettiPieces = [];
+  let rafId = null;
+  function resizeCanvas(){ canvas.width = window.innerWidth; canvas.height = window.innerHeight; }
+  window.addEventListener('resize', resizeCanvas);
+  resizeCanvas();
+
+  function runCelebration(){
+    canvas.style.display = 'block';
+    confettiPieces = [];
+    const colors = ['#FF6B9D','#FFD6E8','#FF4D88','#fff','#ffb6d5'];
+    for(let i=0;i<120;i++){
+      confettiPieces.push({
+        x: Math.random()*canvas.width, y: -20 - Math.random()*canvas.height*0.5,
+        w: 6+Math.random()*6, h: 8+Math.random()*10, speed: 2+Math.random()*3,
+        drift: (Math.random()*2-1), rot: Math.random()*360, rotSpeed: (Math.random()*6-3),
+        color: colors[Math.floor(Math.random()*colors.length)]
+      });
+    }
+    let elapsed = 0;
+    if(rafId) cancelAnimationFrame(rafId);
+    function frame(){
+      ctx.clearRect(0,0,canvas.width,canvas.height);
+      confettiPieces.forEach(p=>{
+        p.y += p.speed; p.x += p.drift; p.rot += p.rotSpeed;
+        ctx.save(); ctx.translate(p.x,p.y); ctx.rotate(p.rot*Math.PI/180);
+        ctx.fillStyle = p.color; ctx.fillRect(-p.w/2,-p.h/2,p.w,p.h); ctx.restore();
+      });
+      elapsed += 16;
+      if(elapsed < 4200){ rafId = requestAnimationFrame(frame); }
+      else { canvas.style.display='none'; ctx.clearRect(0,0,canvas.width,canvas.height); }
+    }
+    frame();
+  }
+  document.getElementById('celebration-next').addEventListener('click', ()=> showScreen('date-choice'));
+
+  // ---- 6. date choice ----
+  document.querySelectorAll('#screen-date-choice [data-value]').forEach(btn=>{
+    btn.addEventListener('click', ()=>{ state.date = btn.dataset.value; showScreen('activity-choice'); });
+  });
+
+  // ---- 7. activity choice ----
+  document.getElementById('act-cinema').addEventListener('click', ()=>{
+    state.activity = 'cinema'; showScreen('movie-choice');
+  });
+  document.getElementById('act-custom').addEventListener('click', ()=>{
+    state.activity = 'custom'; showScreen('custom-proposal');
+  });
+
+  // ---- 8. movie choice ----
+  document.querySelectorAll('#screen-movie-choice [data-value]').forEach(btn=>{
+    btn.addEventListener('click', ()=>{ state.movie = btn.dataset.value; showScreen('time-choice'); });
+  });
+
+  // ---- 9. time choice ----
+  document.querySelectorAll('#screen-time-choice [data-value]').forEach(btn=>{
+    btn.addEventListener('click', ()=>{ state.time = btn.dataset.value; showScreen('after-choice'); });
+  });
+
+  // ---- 10. custom proposal ----
+  document.getElementById('custom-validate').addEventListener('click', ()=>{
+    const val = document.getElementById('custom-input').value.trim();
+    state.customText = val || "une surprise à toi de jouer 😉";
+    showScreen('after-choice');
+  });
+
+  // ---- 11. after choice ----
+  function resetAfterScreen(){
+    document.getElementById('after-question').style.display = '';
+    document.getElementById('after-reveal').style.display = 'none';
+  }
+  document.getElementById('after-maison').addEventListener('click', ()=>{
+    state.after = 'maison';
+    document.getElementById('after-question').style.display = 'none';
+    document.getElementById('reveal-text').textContent = "On rentre tranquillement à la maison après 🏠";
+    document.getElementById('after-reveal').style.display = '';
+  });
+  document.getElementById('after-surprise').addEventListener('click', ()=>{
+    state.after = 'surprise';
+    document.getElementById('after-question').style.display = 'none';
+    document.getElementById('reveal-text').textContent = "Alors... c'est la surprise 😏";
+    document.getElementById('after-reveal').style.display = '';
+  });
+  document.getElementById('reveal-next').addEventListener('click', ()=>{
+    showScreen('date');
+    setTimeout(resetAfterScreen, 900);
+  });
+
+  // ---- 12. recap ----
+  function renderRecap(){
+    document.getElementById('recap-date').textContent = state.date || '—';
+
+    if(state.activity === 'cinema'){
+      document.getElementById('recap-activity').textContent = 'Cinéma – ' + (state.movie || '—');
+      document.getElementById('recap-time-row').classList.remove('hidden');
+      document.getElementById('recap-time').textContent = state.time || '—';
+    } else {
+      document.getElementById('recap-activity').textContent = 'Ta proposition : ' + (state.customText || '—');
+      document.getElementById('recap-time-row').classList.add('hidden');
+    }
+
+    document.getElementById('recap-after').textContent =
+      state.after === 'surprise' ? 'Surprise ✨ (tu verras 😏)' : 'Retour à la maison 🏠';
+  }
+
+})();
+</script>
+</body>
+</html>
